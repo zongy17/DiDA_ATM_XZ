@@ -56,7 +56,7 @@ void integrate_per_substep(State* curr, State* last_sub, State* next_sub, type_f
     //next_sub->interp_from_cell_to_we_edges_UPWIND(next_sub->p, next_sub->p_we); next_sub->p_we_valid = true;
     //next_sub->interp_from_ns_edges_to_vtxs_UPWIND(next_sub->p_ns, next_sub->p_vtx); next_sub->p_vtx_valid = true;
     next_sub->tend_dphsdt();//诊断计算当前时刻的地面静力气压倾向
-    next_sub->calc_m_detadt_interp_to_cell_vtx();//诊断计算垂直坐标速度和m的乘积: mη'，并插值
+    next_sub->calc_m_detadt_interp_to_vtx_cell_UPWIND();//诊断计算垂直坐标速度和m的乘积: mη'，并插值
     next_sub->calc_K_from_u_at_cell();//诊断计算水平动能
 
     //计算所有显式倾向，为下一小步的循环服务
@@ -130,7 +130,7 @@ void advance_w_gz_implicit(State* curr, State* last_sub, State* next_sub, type_f
     if (!next_sub->layer_ph_ns_valid) {printf("advance_w_gz_implicit: next_sub->layer_ph_ns unusable!\n"); exit(1);}
 
     //version-1: 没有乘静力气压项
-    Mat<type_f> layer_pdivph_1(NLEV_half, NX_full);
+    Mat<type_f> layerp_div_ph_1(NLEV_half, NX_full);
     for (int k = 1; k < NLEV_half-1; k++)
         for (int i = 0; i < NX_full; i++){
             type_f layer_p = curr->p(k,i) - curr->p(k-1,i);
@@ -138,7 +138,7 @@ void advance_w_gz_implicit(State* curr, State* last_sub, State* next_sub, type_f
                                             /(curr->layer_ph_cell(k,i)*curr->pt(k,i))\
                               - curr->p(k-1,i)*(next_sub->layer_ph_cell(k-1,i)*next_sub->pt(k-1,i))\
                                             /(curr->layer_ph_cell(k-1,i)*curr->pt(k-1,i));
-            layer_pdivph_1(k,i) = (layer_p + gamma * p_pt_ratio) / next_sub->layer_ph_ns(k,i);
+            layerp_div_ph_1(k,i) = (layer_p + gamma * p_pt_ratio) / next_sub->layer_ph_ns(k,i);
         }
     /*
     //version-2: Zhang Yi
@@ -186,7 +186,7 @@ void advance_w_gz_implicit(State* curr, State* last_sub, State* next_sub, type_f
         A = 1.0 - CB * CB * (G.col(i) + H.col(i));
         B =     - CB * CB *  G.col(i);
         C =     - CB * CB *  H.col(i);
-        D = w_1.col(i) + CB * layer_pdivph_1.col(i);
+        D = w_1.col(i) + CB * layerp_div_ph_1.col(i);
         for (int k = 1; k < NLEV_half-1; k++)
             D(k) = D(k) - CB * G(k,i) * (gz_1(k+1,i)-gz_1(k,i)) + CB * H(k,i) * (gz_1(k,i)-gz_1(k-1,i));
         //设置边界条件
@@ -224,12 +224,10 @@ void advance_w_gz_implicit(State* curr, State* last_sub, State* next_sub, type_f
     next_sub->geo_potential_valid = true;
     //Damping: modiﬁes the state of w immediately after the vertically implicit solver
     next_sub->implicit_Rayleigh_damping_w(dt);//implicit Rayleigh damping内含将w插值到w_cell和w_vtx
-    //next_sub->Rayleigh_damping_w(dt);
 
     next_sub->geo_potential = gz_1 + CB * next_sub->w;//再重新算gz
     next_sub->geo_potential.row(NLEV_half-1) = gravity * next_sub->zs_full;//gz的下边界条件（上边界在之前一并处理了）
     next_sub->geo_potential_valid = true;
-    //next_sub->interp_from_ns_edges_to_cell(next_sub->geo_potential, next_sub->geo_potential_cell); next_sub->geo_potential_cell_valid = true;
 }
 
 //advance_u要等这个状态的w和gz得到update了之后才能计算:注意可能也是从last_sub也就是ET那里开始推进的，而不用n时刻的curr

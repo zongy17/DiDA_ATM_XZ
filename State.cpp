@@ -43,8 +43,8 @@ State::State(int nlev_full, int nx_full) {
     //hydrostatic pressure
     ph_cell             = Mat<type_f>(NLEV_full, NX_full);
     ph_ns               = Mat<type_f>(NLEV_half, NX_full);
-    ph_we               = Mat<type_f>(NLEV_full, NX_half);
-    ph_vtx              = Mat<type_f>(NLEV_half, NX_half);
+    //ph_we               = Mat<type_f>(NLEV_full, NX_half);
+    //ph_vtx              = Mat<type_f>(NLEV_half, NX_half);
     layer_ph_vtx        = Mat<type_f>(NLEV_half, NX_half);
     layer_ph_cell       = Mat<type_f>(NLEV_full, NX_full);
     layer_ph_we         = Mat<type_f>(NLEV_full, NX_half);
@@ -79,6 +79,11 @@ State::State(int nlev_full, int nx_full) {
     layer_pt_lhs        = Mat<type_f>(NLEV_full, NX_full);
     gz_lhs              = Mat<type_f>(NLEV_half, NX_full);
 
+    hpgf_1              = Mat<type_f>(NLEV_full, NX_half);
+    hpgf_2              = Mat<type_f>(NLEV_full, NX_half);
+    u_vert_adv          = Mat<type_f>(NLEV_full, NX_half);
+    K_hori_adv          = Mat<type_f>(NLEV_full, NX_half);
+
     Set_flags_false();
 }
 
@@ -89,7 +94,7 @@ void State::Set_flags_false() {
     w_valid = false; w_cell_valid = false; w_vtx_valid = false;
     K_valid = false;
     pt_valid = false; pt_ns_valid = false; pt_we_valid = false;// pt_vtx_valid = false;
-    ph_cell_valid = false; ph_we_valid = false; ph_ns_valid = false; ph_vtx_valid = false;
+    ph_cell_valid = false; ph_ns_valid = false;// ph_we_valid = false; ph_vtx_valid = false;
     layer_ph_cell_valid = false; layer_ph_we_valid = false; layer_ph_ns_valid = false; layer_ph_vtx_valid = false;
     phs_valid = false; dphsdt_valid = false;
     p_valid = false; p_we_valid = false; p_vtx_valid = false; p_ns_valid = false;
@@ -103,7 +108,7 @@ void State::Set_flags_false() {
 
 //用方案二的坐标的初始化
 void State::Pre_Process(type_f x_lo, type_f x_hi, type_f u_ref, type_f w_ref, type_f zh, type_f tau_0, type_f kexi,\
-                        const char *topo_f, const char *A_half_f, const char *B_half_f) {
+                        const char* zs_half_f, const char* zs_full_f, const char *A_half_f, const char *B_half_f) {
     /*  x_lo: x at left-most half, x_hi: x at right-most half
      *  topo: surface height on half
      *  A_half, B_half: params defined previously
@@ -120,9 +125,9 @@ void State::Pre_Process(type_f x_lo, type_f x_hi, type_f u_ref, type_f w_ref, ty
     this->w_ref = w_ref;
 
     //prepare topological data: zs_half, zs_full and dzs/dx_full
-    zs_half.load(topo_f);
+    zs_half.load(zs_half_f);
+    zs_full.load(zs_full_f);
     for (int i = 0; i < NX_full; i++){
-        zs_full(i) = (zs_half(i+1) + zs_half(i)) / 2.0;//_full always lays on the center!
         dzsdx_full(i) = (zs_half(i+1) - zs_half(i)) / (x_half(i+1) - x_half(i));
     }
 
@@ -148,7 +153,7 @@ void State::Pre_Process(type_f x_lo, type_f x_hi, type_f u_ref, type_f w_ref, ty
 
 //用方案一的坐标的初始化
 void State::Pre_Process(type_f x_lo, type_f x_hi, type_f u_ref, type_f w_ref, type_f zh, type_f tau_0, type_f kexi,\
-                        const char *topo_f, const char *A_half_f, const char *B_half_f, const char* A_full_f, const char* B_full_f) {
+                        const char* zs_half_f, const char* zs_full_f, const char *A_half_f, const char *B_half_f, const char* A_full_f, const char* B_full_f) {
     /*  x_lo: x at left-most half, x_hi: x at right-most half
      *  topo: surface height on half
      *  A_half, B_half: params defined previously
@@ -165,11 +170,12 @@ void State::Pre_Process(type_f x_lo, type_f x_hi, type_f u_ref, type_f w_ref, ty
     this->w_ref = w_ref;
 
     //prepare topological data: zs_half, zs_full and dzs/dx_full
-    zs_half.load(topo_f);
+    zs_half.load(zs_half_f);
+    zs_full.load(zs_full_f);
     for (int i = 0; i < NX_full; i++){
-        zs_full(i) = (zs_half(i+1) + zs_half(i)) / 2.0;//_full always lays on the center!
         dzsdx_full(i) = (zs_half(i+1) - zs_half(i)) / (x_half(i+1) - x_half(i));
     }
+
     //prepare vertical coeffs
     A_eta_half.load(A_half_f); B_eta_half.load(B_half_f);
     A_eta_full.load(A_full_f); B_eta_full.load(B_full_f);

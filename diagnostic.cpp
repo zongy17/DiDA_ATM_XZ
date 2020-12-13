@@ -7,14 +7,14 @@
 //diagnose诊断计算当前时刻state的非预报变量
 void State::diagnose() {
     tend_dphsdt();//诊断计算当前时刻的地面静力气压倾向
-    calc_m_detadt_interp_to_cell_vtx();//诊断计算垂直坐标速度和m的乘积: mη'，并插值
+    calc_m_detadt_interp_to_vtx_cell_UPWIND();//诊断计算垂直坐标速度和m的乘积: mη'，并插值
     calc_K_from_u_at_cell();//诊断计算水平动能
     calc_rho_from_dphidph_at_cell_interp_to_we();//诊断计算密度
     calc_p_from_rho_at_cell_interp_to_we_ns_vtx();//诊断计算气压，并插值
 }
 
 void State::calc_ph_at_cell_ns_we_vtx() {
-    if (ph_ns_valid&&ph_cell_valid&&ph_we_valid&&ph_vtx_valid) {printf("calc_ph_at_cell_ns_we_vtx: already done.\n"); return;}
+    if (ph_ns_valid&&ph_cell_valid) {printf("calc_ph_at_cell_ns_we_vtx: already done.\n"); return;}
     if (!phs_valid) {printf("calc_ph_layer_ph_interp_to_ns_we_vtx: phs unusable!\n"); exit(1);}
     // calc ph on half levels(i.e., north/south interface) from definitions
     for (int k = 0; k < NLEV_half; k++){//from top to bottom
@@ -28,10 +28,8 @@ void State::calc_ph_at_cell_ns_we_vtx() {
             ph_cell(k,i) = A_eta_full(k) * ph0 + B_eta_full(k) * phs(i);
     }
     ph_cell_valid = true;
-    //interp to west/east interface from centroid
-    interp_from_cell_to_we_edges(ph_cell, ph_we); ph_we_valid = true;
-    //interp to vtx from north/south interface
-    interp_from_ns_edges_to_vtxs(ph_ns, ph_vtx); ph_vtx_valid = true;
+    //interp_from_cell_to_we_edges(ph_cell, ph_we); ph_we_valid = true;   //interp to west/east interface from centroid
+    //interp_from_ns_edges_to_vtxs(ph_ns, ph_vtx); ph_vtx_valid = true;   //interp to vtx from north/south interface
 }
 
 void State::calc_layer_ph_at_cell_ns_we_vtx() {
@@ -45,6 +43,34 @@ void State::calc_layer_ph_at_cell_ns_we_vtx() {
     for (int k = 1; k < NLEV_half-1; k++)//middle part
         for (int i = 0; i < NX_full; i++)
             layer_ph_ns(k,i) = ph_cell(k,i) - ph_cell(k-1,i);
+    /*
+    Col<type_f>::fixed<3> etas, vars, coeff;
+    type_f x;
+    for (int i = 0; i < NX_full; i++){//top and bottom: 二次外插
+        //bottom
+        etas = {eta_half(NLEV_half-2), eta_half(NLEV_half-3), eta_half(NLEV_half-4)};
+        vars = {layer_ph_ns(NLEV_half-2,i), layer_ph_ns(NLEV_half-3,i), layer_ph_ns(NLEV_half-4,i)};
+        polyfit(coeff, etas, vars, 2);
+        x = eta_half(NLEV_half-1);
+        layer_ph_ns(NLEV_half-1,i) = coeff(0)*x*x + coeff(1)*x + coeff(2);
+        //top
+        etas = {eta_half(1), eta_half(2), eta_half(3)};
+        vars = {layer_ph_ns(1,i), layer_ph_ns(2,i), layer_ph_ns(3,i)};
+        polyfit(coeff, etas, vars, 2);
+        x = eta_half(0);
+        layer_ph_ns(0,i) = coeff(0)*x*x + coeff(1)*x + coeff(2);
+    }
+    layer_ph_ns_valid = true;
+    */
+    //NOTE: instead of extrapolation, use half layer (layer_ph_ns at bottom and top refer to only half layer)
+    for (int i = 0; i < NX_full; i++){
+        layer_ph_ns(NLEV_half-1,i) = ph_ns(NLEV_half-1,i) - ph_cell(NLEV_full-1,i);//bottom
+        layer_ph_ns(0,i) = ph_cell(0,i) - ph_ns(0,i);//top
+    }
+    layer_ph_ns_valid = true;
+    interp_from_cell_to_we_edges(layer_ph_cell, layer_ph_we);   layer_ph_we_valid = true;
+    interp_from_ns_edges_to_vtxs(layer_ph_ns, layer_ph_vtx);    layer_ph_vtx_valid= true;
+    /*
     //NOTE: instead of extrapolation, use half layer (layer_ph_ns at bottom and top refer to only half layer)
     for (int i = 0; i < NX_full; i++){
         layer_ph_ns(NLEV_half-1,i) = ph_ns(NLEV_half-1,i) - ph_cell(NLEV_full-1,i);//bottom
@@ -66,6 +92,7 @@ void State::calc_layer_ph_at_cell_ns_we_vtx() {
         layer_ph_vtx(0,i) = ph_we(0,i) - ph_vtx(0,i);//top
     }
     layer_ph_vtx_valid = true;
+    */
 }
 
 void State::tend_dphsdt() {
@@ -83,11 +110,11 @@ void State::tend_dphsdt() {
     dphsdt_valid = true;
 }
 
-void State::calc_m_detadt_interp_to_cell_vtx() {
-    if (m_detadt_valid&&m_detadt_cell_valid) {printf("calc_m_detadt_interp_to_cell_vtx: m_detadt already done.\n"); return;}
-    if (!layer_ph_we_valid) {printf("calc_m_detadt_interp_to_cell_vtx: layer_ph_we unusable!\n"); exit(1);}
-    if (!u_valid) {printf("calc_m_detadt_interp_to_cell_vtx: u unusable!\n"); exit(1);}
-    if (!dphsdt_valid) {printf("calc_m_detadt_interp_to_cell_vtx: dphsdt unusable!\n"); exit(1);}
+void State::calc_m_detadt_interp_to_vtx_cell_UPWIND() {
+    if (m_detadt_valid&&m_detadt_cell_valid) {printf("calc_m_detadt_interp_to_vtx_cell_UPWIND: m_detadt already done.\n"); return;}
+    if (!layer_ph_we_valid) {printf("calc_m_detadt_interp_to_vtx_cell_UPWIND: layer_ph_we unusable!\n"); exit(1);}
+    if (!u_valid) {printf("calc_m_detadt_interp_to_vtx_cell_UPWIND: u unusable!\n"); exit(1);}
+    if (!dphsdt_valid) {printf("calc_m_detadt_interp_to_vtx_cell_UPWIND: dphsdt unusable!\n"); exit(1);}
 
     for (int i = 0; i < NX_full; i++){
         m_detadt(0,i) = 0.0;//top
@@ -100,9 +127,9 @@ void State::calc_m_detadt_interp_to_cell_vtx() {
         }
     }
     m_detadt_valid = true;
-    interp_from_ns_edges_to_cell(m_detadt, m_detadt_cell); m_detadt_cell_valid = true;
-    //interp_from_cell_to_we_edges(m_detadt_cell, m_detadt_we); m_detadt_we_valid= true;
-    interp_from_ns_edges_to_vtxs(m_detadt, m_detadt_vtx);  m_detadt_vtx_valid  = true;
+    if (!u_vtx_valid) {printf("calc_m_detadt_interp_to_vtx_cell_UPWIND: u_vtx unusable unusable!\n"); exit(1);}
+    interp_from_ns_edges_to_vtxs_UPWIND(m_detadt, m_detadt_vtx);    m_detadt_vtx_valid  = true;
+    interp_from_ns_edges_to_cell(m_detadt, m_detadt_cell);          m_detadt_cell_valid = true;
 }
 
 void State::calc_K_from_u_at_cell() {
@@ -132,8 +159,7 @@ void State::calc_rho_from_dphidph_at_cell_interp_to_we() {
             rho_we(k,i) = - layer_ph_we(k,i) / (geo_potential_vtx(k+1,i) - geo_potential_vtx(k,i));
     rho_we_valid = true;
     */
-    interp_from_cell_to_we_edges(rho, rho_we);
-    rho_we_valid = true;
+    interp_from_cell_to_we_edges(rho, rho_we);  rho_we_valid = true;
 }
 
 void State::calc_p_from_rho_at_cell_interp_to_we_ns_vtx() {
@@ -150,6 +176,8 @@ void State::calc_p_from_rho_at_cell_interp_to_we_ns_vtx() {
     p_valid = true;
 
     interp_from_cell_to_we_edges(p, p_we);  p_we_valid = true;
+    interp_from_we_edges_to_vtxs(p_we, p_vtx);  p_vtx_valid= true;
+    interp_from_cell_to_ns_edges(p, p_ns);      p_ns_valid = true;
 /*
     //calc p at n/s interface
     if (!pt_ns_valid){printf("calc_p_from_rho_interp_to_ns_vtx: pt_ns unusable!\n"); exit(1);}
@@ -182,8 +210,6 @@ void State::calc_p_from_rho_at_cell_interp_to_we_ns_vtx() {
     //calc p_vtx, same as p_ns
     interp_from_ns_edges_to_vtxs(p_ns, p_vtx); p_vtx_valid = true;
 */
-    interp_from_we_edges_to_vtxs(p_we, p_vtx);  p_vtx_valid= true;
-    interp_from_cell_to_ns_edges(p, p_ns);      p_ns_valid = true;
 }
 
 void State::calc_p_at_cell_linear_interp_to_ns_we_vtx(State* last){

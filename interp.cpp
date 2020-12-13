@@ -150,7 +150,6 @@ void State::interp_from_we_edges_to_vtxs(Mat<type_f> const & edges, Mat<type_f> 
     for (int i = 0; i < NX_half; i++){
         //二次外插
         //bottom
-        //printf("quadratic extrapolation...\n"
         etas = {eta_full(NLEV_full-1), eta_half(NLEV_half-2), eta_full(NLEV_full-2)};
         vars = {edges(NLEV_full-1,i), vtxs(NLEV_half-2,i), edges(NLEV_full-2,i)};
         polyfit(coeff, etas, vars, 2);
@@ -194,12 +193,13 @@ void State::interp_pt_we_upwind() {
 
 void State::interp_from_cell_to_we_edges_UPWIND(const Mat<type_f> &cell, Mat<type_f> &edges) {
     if (!u_valid) {printf("interp_from_cell_to_we_edges_UPWIND: u unusable!\n"); exit(1); }
+    Mat<type_f> sign_u = sign(u);//迎风标志
+
+    //O3/O4
     //static type_f beta = 0.25;//这个beta是对于位温的，可以取0.25试试
     static type_f beta = 1.0;
     type_f beta_div12 = beta / 12.0;
     int l1, l2, r1, r2;
-    Mat<type_f> sign_u = sign(u);//迎风标志
-
     for (int k = 0; k < NLEV_full; k++) {
         for (int i = 0; i < NX_half; i++) {
             r1 =  i           %NX_full;
@@ -214,15 +214,40 @@ void State::interp_from_cell_to_we_edges_UPWIND(const Mat<type_f> &cell, Mat<typ
                        );
         }
     }
+    /*
+    //O5/O6
+    static type_f beta = 1.0;
+    type_f beta_div60 = beta / 60.0;
+    int l1,l2,l3,r1,r2,r3;
+    for (int k = 0; k < NLEV_full; k++){
+        for (int i = 0; i < NX_half; i++){
+            r1 =  i           %NX_full;
+            r2 = (i+1+NX_full)%NX_full;
+            r3 = (i+2+NX_full)%NX_full;
+            l1 = (i-1+NX_full)%NX_full;
+            l2 = (i-2+NX_full)%NX_full;
+            l3 = (i-3+NX_full)%NX_full;
+            edges(k,i) = 37.0/60.0*(cell(k,r1)+cell(k,l1))\
+                       - 2.0/15.0* (cell(k,r2)+cell(k,l2))\
+                       + 1.0/60.0* (cell(k,r3)+cell(k,l3))\
+                       - sign_u(k,i)*beta_div60*(\
+                                      cell(k,r3)-cell(k,l3)
+                               - 5.0*(cell(k,r2)-cell(k,l2))\
+                               +10.0*(cell(k,r1)-cell(k,l1))\
+                       );
+        }
+    }
+    */
 }
 
 void State::interp_from_ns_edges_to_vtxs_UPWIND(const Mat<type_f> &edges, Mat<type_f> &vtxs) {
-    if (!u_valid) {printf("interp_from_ns_edges_to_vtxs_UPWIND: u_vtx unusable!\n"); exit(1); }
+    if (!u_vtx_valid) {printf("interp_from_ns_edges_to_vtxs_UPWIND: u_vtx unusable!\n"); exit(1); }
+    Mat<type_f> sign_u_vtx = sign(u_vtx);//迎风标志
+
+    //O3/O4
     static type_f beta = 1.0;//这个beta是对于w和Φ的，取1.0
     type_f beta_div12 = beta / 12.0;
     int l1, l2, r1, r2;
-    Mat<type_f> sign_u_vtx = sign(u_vtx);//迎风标志
-
     for (int k = 0; k < NLEV_half; k++) {
         for (int i = 0; i < NX_half; i++) {
             r1 =  i           %NX_full;
@@ -237,10 +262,39 @@ void State::interp_from_ns_edges_to_vtxs_UPWIND(const Mat<type_f> &edges, Mat<ty
                       );
         }
     }
+    /*
+    //O5/O6
+    static type_f beta = 1.0;
+    type_f beta_div60 = beta / 60.0;
+    int l1,l2,l3,r1,r2,r3;
+    for (int k = 0; k < NLEV_full; k++){
+        for (int i = 0; i < NX_half; i++){
+            r1 =  i           %NX_full;
+            r2 = (i+1+NX_full)%NX_full;
+            r3 = (i+2+NX_full)%NX_full;
+            l1 = (i-1+NX_full)%NX_full;
+            l2 = (i-2+NX_full)%NX_full;
+            l3 = (i-3+NX_full)%NX_full;
+            vtxs(k,i)  = 37.0/60.0*(edges(k,r1)+edges(k,l1))\
+                       - 2.0/15.0* (edges(k,r2)+edges(k,l2))\
+                       + 1.0/60.0* (edges(k,r3)+edges(k,l3))\
+                       - sign_u_vtx(k,i)*beta_div60*(\
+                                      edges(k,r3)-edges(k,l3)
+                               - 5.0*(edges(k,r2)-edges(k,l2))\
+                               +10.0*(edges(k,r1)-edges(k,l1))\
+                       );
+        }
+    }
+    */
 }
 
 void State::interp_pt_w_gz_u() {
     //另一个预报变量ph因为需要在forward step中用，所以每次算出来phs之后立刻计算，不在此
+    if (!u_valid) {printf("interp_pt_w_gz_u: u unusable!\n"); exit(1);}
+    interp_from_we_edges_to_cell(u, u_cell);        u_cell_valid = true;
+    interp_from_we_edges_to_vtxs(u, u_vtx);         u_vtx_valid= true;
+    interp_from_cell_to_ns_edges(u_cell, u_ns);     u_ns_valid= true;
+
     if (!pt_valid) {printf("interp_pt_w_gz_u: pt unusable!\n"); exit(1);}
     interp_from_cell_to_we_edges_UPWIND(pt, pt_we); pt_we_valid = true;
     interp_from_cell_to_ns_edges(pt, pt_ns);        pt_ns_valid = true;
@@ -252,9 +306,4 @@ void State::interp_pt_w_gz_u() {
     if (!geo_potential_valid) {printf("interp_pt_w_gz_u: gz unusable!\n"); exit(1);}
     interp_from_ns_edges_to_vtxs_UPWIND(geo_potential, geo_potential_vtx);  geo_potential_vtx_valid = true;
     interp_from_ns_edges_to_cell(geo_potential, geo_potential_cell);        geo_potential_cell_valid= true;
-
-    if (!u_valid) {printf("interp_pt_w_gz_u: u unusable!\n"); exit(1);}
-    interp_from_we_edges_to_cell(u, u_cell);        u_cell_valid = true;
-    interp_from_we_edges_to_vtxs(u, u_vtx);         u_vtx_valid= true;
-    interp_from_cell_to_ns_edges(u_cell, u_ns);     u_ns_valid= true;
 }

@@ -79,27 +79,27 @@ int main()
     type_f curr_t = 0.0;
 
     if (vert_init_method == 1){
-        curr_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt", "A_full.txt", "B_full.txt");
-        in_1_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt", "A_full.txt", "B_full.txt");
+        curr_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "zs_half.txt", "zs_full.txt", "A_half.txt", "B_half.txt", "A_full.txt", "B_full.txt");
+        in_1_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "zs_half.txt", "zs_full.txt", "A_half.txt", "B_half.txt", "A_full.txt", "B_full.txt");
 #ifdef mod_RK4
         in_2_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt", "A_full.txt", "B_full.txt");
         in_3_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt", "A_full.txt", "B_full.txt");
 #endif
 #ifdef mod_RK3
-        in_2_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt", "A_full.txt", "B_full.txt");
+        in_2_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "zs_half.txt", "zs_full.txt", "A_half.txt", "B_half.txt", "A_full.txt", "B_full.txt");
 #endif
-        next_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt", "A_full.txt", "B_full.txt");
+        next_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "zs_half.txt", "zs_full.txt", "A_half.txt", "B_half.txt", "A_full.txt", "B_full.txt");
     } else {
-        curr_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt");
-        in_1_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt");
+        curr_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "zs_half.txt", "zs_full.txt", "A_half.txt", "B_half.txt");
+        in_1_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "zs_half.txt", "zs_full.txt", "A_half.txt", "B_half.txt");
 #ifdef mod_RK4
         in_2_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt");
         in_3_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt");
 #endif
 #ifdef mod_RK3
-        in_2_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt");
+        in_2_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "zs_half.txt", "zs_full.txt", "A_half.txt", "B_half.txt");
 #endif
-        next_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "topo.txt", "A_half.txt", "B_half.txt");
+        next_state->Pre_Process(x_lo, x_hi, u_ref, w_ref, zh, tau_0, kexi, "zs_half.txt", "zs_full.txt", "A_half.txt", "B_half.txt");
     }
 
     printf("All States finished Pre_Process.\n");
@@ -115,6 +115,14 @@ int main()
     FILE* err_log = fopen("err_log.txt", "w+");
     //LOOP BEGIN HERE
     char filename[100];
+    sprintf(filename, "eta_full.dat\0");
+    State::Write_dat(curr_state->eta_full, filename);
+    sprintf(filename, "eta_half.dat\0");
+    State::Write_dat(curr_state->eta_half, filename);
+    sprintf(filename, "x_full.dat\0");
+    State::Write_dat(curr_state->x_full, filename);
+    sprintf(filename, "x_half.dat\0");
+    State::Write_dat(curr_state->x_half, filename);
 
     for (int step = 0; step < nstep; step++)
     {
@@ -123,18 +131,28 @@ int main()
 
         //写出和输出
 #ifdef OUTPUT
-        if (step % nstep_to_write == 0) {
+        if (step % nstep_to_write == 0 && step != 0) {
             printf("writing to .nc file...\n");
             sprintf(filename, "ph_%.2fs.dat\0", curr_t);
             State::Write_dat(curr_state->ph_cell, filename);
             sprintf(filename, "u_%.2fs.dat\0", curr_t);
-            State::Write_dat(curr_state->u_cell, filename);
+            State::Write_dat(curr_state->u, filename);
+            sprintf(filename, "u_ns_%.2fs.dat\0", curr_t);
+            State::Write_dat(curr_state->u_ns, filename);
             sprintf(filename, "w_%.2fs.dat\0", curr_t);
-            State::Write_dat(curr_state->w_cell, filename);
+            State::Write_dat(curr_state->w, filename);
             sprintf(filename, "pt_%.2fs.dat\0", curr_t);
             State::Write_dat(curr_state->pt, filename);
             sprintf(filename, "gz_%.2fs.dat\0", curr_t);
-            State::Write_dat(curr_state->geo_potential_cell, filename);
+            State::Write_dat(curr_state->geo_potential, filename);
+            sprintf(filename, "K_hori_adv%.2fs.dat\0", curr_t);
+            State::Write_dat(curr_state->K_hori_adv, filename);
+            sprintf(filename, "u_vert_adv%.2fs.dat\0", curr_t);
+            State::Write_dat(curr_state->u_vert_adv, filename);
+            sprintf(filename, "hpgf_1_%.2fs.dat\0", curr_t);
+            State::Write_dat(curr_state->hpgf_1, filename);
+            sprintf(filename, "hpgf_2_%.2fs.dat\0", curr_t);
+            State::Write_dat(curr_state->hpgf_2, filename);
             printf("finish writing.\n");
             //输出到控制台观察
             //curr_state->u.print("curr->u");
@@ -185,17 +203,23 @@ int main()
     sprintf(filename, "ph_%.2fs.dat\0", curr_t);
     State::Write_dat(curr_state->ph_cell, filename);
     sprintf(filename, "u_%.2fs.dat\0", curr_t);
-    State::Write_dat(curr_state->u_cell, filename);
+    State::Write_dat(curr_state->u, filename);
+    sprintf(filename, "u_ns_%.2fs.dat\0", curr_t);
+    State::Write_dat(curr_state->u_ns, filename);
     sprintf(filename, "w_%.2fs.dat\0", curr_t);
-    State::Write_dat(curr_state->w_cell, filename);
+    State::Write_dat(curr_state->w, filename);
     sprintf(filename, "pt_%.2fs.dat\0", curr_t);
     State::Write_dat(curr_state->pt, filename);
     sprintf(filename, "gz_%.2fs.dat\0", curr_t);
-    State::Write_dat(curr_state->geo_potential_cell, filename);
-    sprintf(filename, "eta.dat\0");
-    State::Write_dat(curr_state->eta_full, filename);
-    sprintf(filename, "x.dat\0");
-    State::Write_dat(curr_state->x_full, filename);
+    State::Write_dat(curr_state->geo_potential, filename);
+    sprintf(filename, "K_hori_adv%.2fs.dat\0", curr_t);
+    State::Write_dat(curr_state->K_hori_adv, filename);
+    sprintf(filename, "u_vert_adv%.2fs.dat\0", curr_t);
+    State::Write_dat(curr_state->u_vert_adv, filename);
+    sprintf(filename, "hpgf_1_%.2fs.dat\0", curr_t);
+    State::Write_dat(curr_state->hpgf_1, filename);
+    sprintf(filename, "hpgf_2_%.2fs.dat\0", curr_t);
+    State::Write_dat(curr_state->hpgf_2, filename);
     printf("finish writing.\n");
     FILE * fp = fopen("netcdf-control.txt", "w+");
     fprintf(fp, "NX_full: %d\nNLEV_full: %d\n", NX_full, NLEV_full);

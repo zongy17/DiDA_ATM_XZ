@@ -42,9 +42,10 @@ public:
     Mat<type_f> pt, pt_ns, pt_we;
     bool pt_valid, pt_ns_valid, pt_we_valid;
     //hydrostatic pressure
-    Mat<type_f> ph_cell, ph_ns, ph_we, ph_vtx, layer_ph_cell, layer_ph_we, layer_ph_ns, layer_ph_vtx;
-    bool ph_cell_valid, ph_ns_valid, ph_we_valid, ph_vtx_valid,\
-        layer_ph_cell_valid, layer_ph_we_valid, layer_ph_ns_valid, layer_ph_vtx_valid;
+    Mat<type_f> ph_cell, ph_ns;// ph_we, ph_vtx,
+    Mat<type_f> layer_ph_cell, layer_ph_we, layer_ph_ns, layer_ph_vtx;
+    bool ph_cell_valid, ph_ns_valid;// ph_we_valid, ph_vtx_valid,
+    bool layer_ph_cell_valid, layer_ph_we_valid, layer_ph_ns_valid, layer_ph_vtx_valid;
     Row<type_f> phs;//surface hydrostatic pressure
     bool phs_valid;
     //pressure
@@ -68,13 +69,15 @@ public:
     Mat<type_f> u_lhs, u_rhs, w_lhs, layer_pt_lhs, gz_lhs;//u_rhs实际上就是水平气压梯度力
     bool dphsdt_valid, u_lhs_valid, u_rhs_valid, w_lhs_valid, layer_pt_lhs_valid, gz_lhs_valid;
 
+    Mat<type_f> hpgf_1, hpgf_2, u_vert_adv, K_hori_adv;
+
     State(int nlev_full, int nx_full);
     void Set_flags_false();//set all flags as false
     //Pre-Process functions
     void Pre_Process(type_f x_lo, type_f x_hi, type_f u_ref, type_f w_ref, type_f zh, type_f tau_0, type_f kexi,\
-                    const char* topo_f, const char* A_half_f, const char* B_half_f);
+                    const char* zs_half_f, const char* zs_full_f, const char* A_half_f, const char* B_half_f);
     void Pre_Process(type_f x_lo, type_f x_hi, type_f u_ref, type_f w_ref, type_f zh, type_f tau_0, type_f kexi,\
-                    const char* topo_f, const char* A_half_f, const char* B_half_f, const char* A_full_f, const char* B_full_f);
+                    const char* zs_half_f, const char* zs_full_f, const char* A_half_f, const char* B_half_f, const char* A_full_f, const char* B_full_f);
     //initiate function
     void initiate(const char* u0_f, const char* w0_f, const char* pt0_f,\
                   const char* geo_potential0_f, const char* phs0_f);//用文件输入
@@ -94,7 +97,7 @@ public:
     void calc_ph_at_cell_ns_we_vtx();
     void calc_layer_ph_at_cell_ns_we_vtx();
     void tend_dphsdt();//计算静力气压的倾向
-    void calc_m_detadt_interp_to_cell_vtx();//诊断计算垂直方向质量通量，mη'
+    void calc_m_detadt_interp_to_vtx_cell_UPWIND();//诊断计算垂直方向质量通量，mη'
     void calc_K_from_u_at_cell();
     void calc_rho_from_dphidph_at_cell_interp_to_we();//diagnose rho from δΦ/δΠ
     void calc_p_from_rho_at_cell_interp_to_we_ns_vtx();
