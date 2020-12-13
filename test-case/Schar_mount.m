@@ -6,6 +6,7 @@ clear;
 % Solver (CSLAM-NH) with Idealized Orography
 
 NX_full = 800; NX_half = NX_full + 1;
+%NX_full = 1600; NX_half = NX_full + 1;
 NLEV_full = 100; NLEV_half = NLEV_full + 1;
 
 % constants
@@ -23,6 +24,7 @@ N_freq = g / sqrt(Rd * T_ref);
 
 % domain size
 x_lo = -200.0e3; x_hi = 200.0e3;
+% x_lo = -100.0e3; x_hi = 100.0e3;
 ph_top_set = 0.0;
 diss_rate = 0.006511; % 温度衰减率 K/m
 
@@ -150,17 +152,18 @@ min_delta_x %#ok<NOPTS>
 min_delta_z %#ok<NOPTS>
 
 % 输出算例控制文件
-simu_time = 18.0;% 小时
-delta_t = 1; % 秒
-delta_t_to_write = 20; % 分钟
-nstep = simu_time*3600/delta_t; 
+simu_time = 10;% 小时
+% delta_t = 0.5; % 秒
+delta_t = 1.0; % 秒
+delta_t_to_write = 30; % 分钟
+nstep = simu_time * 3600 / delta_t; 
 nstep_to_write = delta_t_to_write * 60 / delta_t;
-% nstep_to_write = 1;
 
 kexi = 0.6; % 0.5 for Crank-Nicholson
 
 zh = z_top_calc - 9.5e3; % non-hydrostatic
-tau_0 = 1.0 / 0.15;
+tau_0 = 1.0 / 0.15; % for dekta_x = 500m 
+%tau_0 = 1.0 / 0.3;
 
 fid = fopen("../cmake-build-release/case-control.txt", "w+");
 fprintf(fid, "method: 3\n");
@@ -181,7 +184,8 @@ fclose(fid);
 % 输出初始场文件
 save("../cmake-build-release/A_half.txt","A_half", "-ascii");
 save("../cmake-build-release/B_half.txt","B_half", "-ascii");
-save("../cmake-build-release/topo.txt","zs_half", "-ascii");
+save("../cmake-build-release/zs_half.txt","zs_half", "-ascii");
+save("../cmake-build-release/zs_full.txt","zs_full", "-ascii");
 save("../cmake-build-release/phs0.txt","phs_full", "-ascii");
 save("../cmake-build-release/u0.txt","u", "-ascii");
 save("../cmake-build-release/w0.txt","w", "-ascii");

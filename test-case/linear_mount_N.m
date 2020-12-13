@@ -148,9 +148,9 @@ min_delta_x %#ok<NOPTS>
 min_delta_z %#ok<NOPTS>
 
 % 输出算例控制文件
-simu_time = 3.0;% 小时
+simu_time = 18.0;% 小时
 delta_t = 1; % 秒
-delta_t_to_write = 5; % 分钟
+delta_t_to_write = 30; % 分钟
 nstep = simu_time*3600/delta_t; 
 nstep_to_write = delta_t_to_write * 60 / delta_t;
 
@@ -176,7 +176,8 @@ fclose(fid);
 % 输出初始场文件
 save("../cmake-build-release/A_half.txt","A_half", "-ascii");
 save("../cmake-build-release/B_half.txt","B_half", "-ascii");
-save("../cmake-build-release/topo.txt","zs_half", "-ascii");
+save("../cmake-build-release/zs_half.txt","zs_half", "-ascii");
+save("../cmake-build-release/zs_full.txt","zs_full", "-ascii");
 save("../cmake-build-release/phs0.txt","phs_full", "-ascii");
 save("../cmake-build-release/u0.txt","u", "-ascii");
 save("../cmake-build-release/w0.txt","w", "-ascii");
