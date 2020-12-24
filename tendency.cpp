@@ -177,6 +177,7 @@ void State::tend_w_lhs() {
     if (!w_cell_valid) {printf("tend_w_lhs: w_cell unusable!\n"); exit(1);}
 
     type_f hori_adv, vert_adv, delta_x;
+    type_f delta_mdetadt_w, delta_mdetadt, deta_up, deta_down;
     //k == 0: top, 这个倾向应该不会用来算
     int k = 0;//改中心差分为单侧差分，实验发现w_lhs在顶部和底部都可以不用算，而直接设为0
     for (int i = 0; i < NX_full; i++) {
@@ -198,9 +199,20 @@ void State::tend_w_lhs() {
             hori_adv   = (layer_ph_vtx(k,i+1)*u_vtx(k,i+1)*(w_vtx(k,i+1)-w(k,i))\
                          +layer_ph_vtx(k,i)*u_vtx(k,i)*(w(k,i)-w_vtx(k,i)) )\
                          / delta_x / layer_ph_ns(k,i);
+            /*
             vert_adv   = (m_detadt_cell(k,i)*(w_cell(k,i)-w(k,i))\
                          +m_detadt_cell(k-1,i)*(w(k,i)-w_cell(k-1,i)) )\
                          / layer_ph_ns(k,i);
+            */
+            deta_up = eta_full(k)-eta_half(k);
+            deta_down = eta_half(k) - eta_full(k-1);
+            delta_mdetadt = deta_down/deta_up * (m_detadt_cell(k,i)-m_detadt(k,i))\
+                          - deta_up/deta_down * (m_detadt_cell(k-1,i)-m_detadt(k,i));
+            delta_mdetadt_w = deta_down/deta_up\
+                  * (m_detadt_cell(k,i)*w_cell(k,i) - m_detadt(k,i)*w(k,i))\
+                             - deta_up/deta_down\
+                  * (m_detadt_cell(k-1,i)*w_cell(k-1,i) - m_detadt(k,i)*w(k,i));
+            vert_adv = (delta_mdetadt_w - w(k,i) * delta_mdetadt) / layer_ph_ns(k,i);
             w_lhs(k,i) = hori_adv + vert_adv;
         }
     }
@@ -233,6 +245,7 @@ void State::tend_gz_lhs() {
     if (!layer_ph_ns_valid) {printf("tend_gz_lhs: layer_ph_ns unusable!\n"); exit(1);}
 
     type_f hori_adv, vert_adv, delta_x;
+    type_f delta_mdetadt_gz, delta_mdetadt, deta_up, deta_down;
     //k == 0: top，将中心差分改成单侧差分
     int k = 0;
     for (int i = 0; i < NX_full; i++){
@@ -243,6 +256,7 @@ void State::tend_gz_lhs() {
                      / delta_x / layer_ph_ns(k,i);
         //垂直对流项改为单侧差分
         vert_adv   = m_detadt_cell(k,i)*(geo_potential_cell(k,i) - geo_potential(k,i))/layer_ph_ns(k,i);
+
         gz_lhs(k,i) = hori_adv + vert_adv;
     }
     //middle part
@@ -252,9 +266,20 @@ void State::tend_gz_lhs() {
             hori_adv   = (layer_ph_vtx(k,i+1)*u_vtx(k,i+1)*(geo_potential_vtx(k,i+1)-geo_potential(k,i))\
                          +layer_ph_vtx(k,i)*u_vtx(k,i)*(geo_potential(k,i)-geo_potential_vtx(k,i)) )\
                          / delta_x / layer_ph_ns(k,i);
+            /*
             vert_adv   = ( m_detadt_cell(k,i)*(geo_potential_cell(k,i)-geo_potential(k,i))\
                          + m_detadt_cell(k-1,i)*(geo_potential(k,i)-geo_potential_cell(k-1,i)) )\
                          / layer_ph_ns(k,i);
+            */
+            deta_up = eta_full(k)-eta_half(k);
+            deta_down = eta_half(k) - eta_full(k-1);
+            delta_mdetadt = deta_down/deta_up * (m_detadt_cell(k,i)-m_detadt(k,i))\
+                          - deta_up/deta_down * (m_detadt_cell(k-1,i)-m_detadt(k,i));
+            delta_mdetadt_gz = deta_down/deta_up\
+                  * (m_detadt_cell(k,i)*geo_potential_cell(k,i) - m_detadt(k,i)*geo_potential(k,i))\
+                             - deta_up/deta_down\
+                  * (m_detadt_cell(k-1,i)*geo_potential_cell(k-1,i) - m_detadt(k,i)*geo_potential(k,i));
+            vert_adv = (delta_mdetadt_gz - geo_potential(k,i) * delta_mdetadt) / layer_ph_ns(k,i);
             gz_lhs(k,i) = hori_adv + vert_adv;
         }
     }
