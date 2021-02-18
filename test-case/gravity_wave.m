@@ -23,7 +23,7 @@ N_freq = 0.01; % s^(-1)
 x_lo = -150e3; x_hi = 150e3; NX_full = 300;
 ph_top_set = 0.0;
 
-% ¼ÆËãË®Æ½×ø±ê
+% è®¡ç®—æ°´å¹³åæ ‡
 NX_half = NX_full + 1;
 delta_X = (x_hi-x_lo)/NX_full;
 x_half = x_lo : delta_X : x_hi;
@@ -31,7 +31,7 @@ for i = 1:1:NX_full
     x_full(i) = (x_half(i)+x_half(i+1))/ 2.0;
 end
 
-% ´¹Ö±×ø±êÏµÊı
+% å‚ç›´åæ ‡ç³»æ•°
 NLEV_full = 10; NLEV_half = NLEV_full + 1;
 if NLEV_full == 10
     A_half = [
@@ -156,29 +156,29 @@ end
 eta_half = A_half + B_half;
 eta_full = A_full + B_full;
 
-% ¼ÆËãµØ±í¸ß¶È
+% è®¡ç®—åœ°è¡¨é«˜åº¦
 zs_half = zeros(1, NX_half);
 zs_full = zeros(1, NX_full);
 right = zs_half(1,2:NX_half);
 left  = zs_half(1,1:NX_half-1);
 dzsdx_full = (right-left) / delta_X;
         
-% ¼ÆËãµØÃæ¾²Á¦ÆøÑ¹
-phs_full = ones(1,NX_full) * p_ref; % Ã»ÓĞµØĞÎ£¬µØÃæ¾²Á¦ÆøÑ¹¾ÍÊÇ²Î¿¼ÆøÑ¹
-% ¼ÆËã¸÷¸öÎ»ÖÃfull levelµÄ¾²Á¦ÆøÑ¹
+% è®¡ç®—åœ°é¢é™åŠ›æ°”å‹
+phs_full = ones(1,NX_full) * p_ref; % æ²¡æœ‰åœ°å½¢ï¼Œåœ°é¢é™åŠ›æ°”å‹å°±æ˜¯å‚è€ƒæ°”å‹
+% è®¡ç®—å„ä¸ªä½ç½®full levelçš„é™åŠ›æ°”å‹
 for k = 1:1:NLEV_full
     for i = 1:1:NX_full
         ph_cell(k,i) = A_full(k)*p_ref + B_full(k)*phs_full(i);
     end
 end
-% ¼ÆËã¸÷¸öÎ»ÖÃhalf levelµÄ¾²Á¦ÆøÑ¹
+% è®¡ç®—å„ä¸ªä½ç½®half levelçš„é™åŠ›æ°”å‹
 for k = 1:1:NLEV_half
     for i = 1:1:NX_full
         ph_ns(k,i) = A_half(k)*p_ref + B_half(k)*phs_full(i);
     end
 end
 
-% ¼ÆËãË®Æ½ËÙ¶È
+% è®¡ç®—æ°´å¹³é€Ÿåº¦
 u = zeros(NLEV_full, NX_half);
 for k = 1:1:NLEV_full
     for i = 1:1:NX_half
@@ -186,7 +186,7 @@ for k = 1:1:NLEV_full
     end
 end
 
-% ¼ÆËã´¹Ö±ËÙ¶È
+% è®¡ç®—å‚ç›´é€Ÿåº¦
 w = zeros(NLEV_half, NX_full);
 for k = 1:1:NLEV_half
     for i = 1:1:NX_full
@@ -194,7 +194,7 @@ for k = 1:1:NLEV_half
     end
 end
 
-% ¼ÆËãÎ»ÎÂ
+% è®¡ç®—ä½æ¸©
 G = g^2/N_freq^2/Cp;
 for k = 1:1:NLEV_full
     for i = 1:1:NX_full
@@ -205,7 +205,7 @@ for k = 1:1:NLEV_full
     end
 end
 
-% ¼ÆËãµØÊÆ
+% è®¡ç®—åœ°åŠ¿
 for k = 1:1:NLEV_half
     for i = 1:1:NX_full
         num_log = T_surf/G* (power(ph_ns(k,i)/phs_full(i), kappa) - 1) + 1;
@@ -214,22 +214,12 @@ for k = 1:1:NLEV_half
 end
 gz = g * z;
 
-% determine where to truncate
-z_top_set = 10.0e3; % ºÃÏñÉèÌ«´óÁËÃ»·¨µÃµ½£¿
-trunc_lev = 1;
-for k = 1:1:NLEV_half
-    if z(k,1) < z_top_set
-        trunc_lev = k;
-        break
-    end
-end
-
 z_top_calc = z(1,1) %#ok<NOPTS>
 ph_top_calc = ph_ns(1,1) %#ok<NOPTS>
 
-% ¼ÓÉÏÎ»ÎÂÈÅ¶¯
+% åŠ ä¸Šä½æ¸©æ‰°åŠ¨
 % perturbed pt profile
-% ÈÅ¶¯Á¿ = ¦¤pt * sin(pi*z/H)/(1+(x-xc)^2/a^2)
+% æ‰°åŠ¨é‡ = Î”pt * sin(pi*z/H)/(1+(x-xc)^2/a^2)
 delta_pt = 1; % K
 xc = (x_lo+x_hi)/2.0 - u_ref * 3000; 
 a = 5.0e3; H = 10.0e3;
@@ -260,10 +250,10 @@ end
 min_delta_x %#ok<NOPTS>
 min_delta_z %#ok<NOPTS>
 
-% Êä³öËãÀı¿ØÖÆÎÄ¼ş
-simu_time = 1;% Ğ¡Ê±
-delta_t = 2.0; % Ãë
-delta_t_to_write = 5; % ·ÖÖÓ
+% è¾“å‡ºç®—ä¾‹æ§åˆ¶æ–‡ä»¶
+simu_time = 1;% å°æ—¶
+delta_t = 2.0; % ç§’
+delta_t_to_write = 5; % åˆ†é’Ÿ
 nstep = simu_time * 3600 / delta_t; 
 nstep_to_write = delta_t_to_write * 60 / delta_t;
 max_delta_t = min_delta_x / (340+u_ref)
@@ -289,7 +279,7 @@ fprintf(fid, "tau_0: %f\n", tau_0);
 fprintf(fid, "kexi: %f\n", kexi);
 fclose(fid);
 
-% Êä³ö³õÊ¼³¡ÎÄ¼ş
+% è¾“å‡ºåˆå§‹åœºæ–‡ä»¶
 save("../cmake-build-release/A_half.txt","A_half", "-ascii");
 save("../cmake-build-release/B_half.txt","B_half", "-ascii");
 save("../cmake-build-release/zs_half.txt","zs_half", "-ascii");
